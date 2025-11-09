@@ -73,10 +73,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onAudioRequest }
                         <div className="mt-3 flex items-center justify-between">
                             <button
                                 onClick={() => onAudioRequest(message)}
-                                className="text-gray-400 hover:text-white transition-colors"
-                                title={message.isPlayingAudio ? "Stop reading" : "Read aloud"}
+                                className="text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={
+                                    message.isGeneratingAudio ? "Generating audio..." :
+                                    message.isPlayingAudio ? "Stop reading" : "Read aloud"
+                                }
+                                disabled={message.isGeneratingAudio}
                             >
-                                {message.isPlayingAudio ? <StopIcon /> : <SoundIcon />}
+                                {message.isGeneratingAudio ? <SpinnerIcon /> : (message.isPlayingAudio ? <StopIcon /> : <SoundIcon />)}
                             </button>
                         </div>
                     )}

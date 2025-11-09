@@ -142,16 +142,30 @@ const Chat: React.FC = () => {
             stopAudio();
             return;
         }
-
+    
         if (message.audioData) {
             await playAudio(message.id, message.audioData);
             return;
         }
-
+    
+        setMessages(prev => prev.map(m => m.id === message.id ? { ...m, isGeneratingAudio: true } : m));
+    
         const audioData = await getSpeechAudio(message.text);
+    
         if (audioData) {
-            setMessages(prev => prev.map(m => m.id === message.id ? { ...m, audioData } : m));
+            setMessages(prev => prev.map(m => 
+                m.id === message.id 
+                ? { ...m, audioData, isGeneratingAudio: false } 
+                : m
+            ));
             await playAudio(message.id, audioData);
+        } else {
+            // On failure, just reset the loading state
+            setMessages(prev => prev.map(m => 
+                m.id === message.id 
+                ? { ...m, isGeneratingAudio: false } 
+                : m
+            ));
         }
     };
 

@@ -18,6 +18,7 @@ export interface Message {
   isPlayingAudio?: boolean;
   isThinking?: boolean;
   thinkingSteps?: string[];
+  isGeneratingAudio?: boolean;
 }
 
 export interface Pantry {
