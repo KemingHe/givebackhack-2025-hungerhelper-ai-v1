@@ -1,6 +1,6 @@
 import React from 'react';
 import { Message, Role, GroundingSource } from '../types';
-import { SoundIcon, StopIcon, UserIcon, BotIcon, WebIcon, MapIcon, CheckIcon, SpinnerIcon } from './Icons';
+import { SoundIcon, StopIcon, UserIcon, BotIcon, WebIcon, MapIcon, CheckIcon, SpinnerIcon, BrainIcon, ListIcon, PencilIcon } from './Icons';
 
 interface MessageBubbleProps {
     message: Message;
@@ -20,23 +20,50 @@ const SourceLink: React.FC<{ source: GroundingSource }> = ({ source }) => (
     </a>
 );
 
-const ThinkingIndicator: React.FC<{ steps: string[] }> = ({ steps }) => (
-    <div className="mb-3 border-b border-gray-600 pb-3">
-        <h4 className="text-sm font-semibold text-gray-300 mb-2">Assistant is thinking...</h4>
-        <ul className="space-y-1.5">
-            {steps.map((step, index) => (
-                <li key={index} className="flex items-center gap-2 text-xs text-gray-400 animate-fade-in">
-                    {index < steps.length - 1 ? (
-                        <CheckIcon />
-                    ) : (
-                        <SpinnerIcon />
-                    )}
-                    <span>{step}</span>
-                </li>
-            ))}
-        </ul>
+const TypingIndicator: React.FC = () => (
+    <div className="flex items-center space-x-1 py-2">
+        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '-0.3s'}}></span>
+        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '-0.15s'}}></span>
+        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
     </div>
 );
+
+const ThinkingIndicator: React.FC<{ steps: string[], isThinking: boolean }> = ({ steps, isThinking }) => {
+    
+    const getStepIcon = (step: string) => {
+        const lowerStep = step.toLowerCase();
+        if (lowerStep.includes('analyzing')) return <BrainIcon />;
+        if (lowerStep.includes('consulting') || lowerStep.includes('list')) return <ListIcon />;
+        if (lowerStep.includes('searching') || lowerStep.includes('web')) return <WebIcon />;
+        if (lowerStep.includes('checking') || lowerStep.includes('locations')) return <MapIcon />;
+        if (lowerStep.includes('formatting') || lowerStep.includes('finalizing')) return <PencilIcon />;
+        return null;
+    };
+
+    return (
+        <div className="mb-3 border-b border-gray-600 pb-3">
+            <h4 className="text-sm font-semibold text-gray-300 mb-2">Assistant is thinking...</h4>
+            <ul className="space-y-2">
+                {steps.map((step, index) => (
+                    <li key={index} className="flex items-start gap-3 text-sm text-gray-300 animate-fade-in">
+                        <div className="w-4 h-4 flex items-center justify-center flex-shrink-0 pt-0.5">
+                            {isThinking && index === steps.length - 1 ? (
+                                <SpinnerIcon />
+                            ) : (
+                                <div className="text-emerald-400"><CheckIcon /></div>
+                            )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                           <span className="text-gray-400">{getStepIcon(step)}</span>
+                           <span>{step}</span>
+                        </div>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+};
 
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onAudioRequest }) => {
@@ -63,11 +90,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onAudioRequest }
                         isUser
                             ? 'bg-blue-600 text-white rounded-br-none'
                             : 'bg-gray-700 text-gray-200 rounded-bl-none'
-                    }`}
+                    } ${message.isThinking ? 'thinking-bubble-animation' : ''}`}
                 >
-                    {message.isThinking && message.thinkingSteps && <ThinkingIndicator steps={message.thinkingSteps} />}
+                    {message.isThinking && message.thinkingSteps && <ThinkingIndicator steps={message.thinkingSteps} isThinking={!!message.isThinking} />}
 
-                    <p className="whitespace-pre-wrap">{!message.text && message.isThinking ? "Please wait..." : formattedText}</p>
+                    <div className="whitespace-pre-wrap">
+                        {!message.text && message.isThinking ? <TypingIndicator /> : formattedText}
+                    </div>
                     
                     {!isUser && !message.isThinking && message.text && (
                         <div className="mt-3 flex items-center justify-between">

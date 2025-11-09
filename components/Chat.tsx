@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Message, Role, GroundingSource } from '../types';
-import { generateResponse, getSpeechAudio, generateResponseStream } from '../services/geminiService';
+import { getSpeechAudio, generateResponseStream } from '../services/geminiService';
 import { useGeolocation } from '../hooks/useGeolocation';
 import MessageBubble from './MessageBubble';
 import { BrainIcon, GeoIcon, MicIcon, SendIcon } from './Icons';
@@ -43,7 +43,6 @@ const Chat: React.FC = () => {
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [isThinkingMode, setIsThinkingMode] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const { location, error: geoError, getLocation, loading: geoLoading } = useGeolocation();
     const chatEndRef = useRef<HTMLDivElement>(null);
@@ -178,46 +177,37 @@ const Chat: React.FC = () => {
         setInput('');
         setIsLoading(true);
 
-        if (isThinkingMode) {
-            const modelMessageId = (Date.now() + 1).toString();
-            const thinkingMessage: Message = {
-                id: modelMessageId,
-                text: '',
-                role: Role.MODEL,
-                isThinking: true,
-                thinkingSteps: ['Analyzing your request...']
-            };
-            setMessages(prev => [...prev, thinkingMessage]);
+        const modelMessageId = (Date.now() + 1).toString();
+        const thinkingMessage: Message = {
+            id: modelMessageId,
+            text: '',
+            role: Role.MODEL,
+            isThinking: true,
+            thinkingSteps: ['Analyzing your request...', 'Consulting internal pantry list...']
+        };
+        setMessages(prev => [...prev, thinkingMessage]);
 
-            const handleChunk = (chunk: { text?: string; step?: string; sources?: GroundingSource[] }) => {
-                setMessages(prev => prev.map(msg => {
-                    if (msg.id !== modelMessageId || !msg.isThinking) return msg;
-                    
-                    const updatedMsg = { ...msg, thinkingSteps: [...(msg.thinkingSteps || [])] };
-                    if (chunk.text) updatedMsg.text += chunk.text;
-                    if (chunk.step && !updatedMsg.thinkingSteps.includes(chunk.step)) {
-                        updatedMsg.thinkingSteps.push(chunk.step);
-                    }
-                    if (chunk.sources) updatedMsg.sources = chunk.sources;
-                    return updatedMsg;
-                }));
-            };
+        const handleChunk = (chunk: { text?: string; step?: string; sources?: GroundingSource[] }) => {
+            setMessages(prev => prev.map(msg => {
+                if (msg.id !== modelMessageId || !msg.isThinking) return msg;
+                
+                const updatedMsg = { ...msg, thinkingSteps: [...(msg.thinkingSteps || [])] };
+                if (chunk.text) updatedMsg.text += chunk.text;
+                if (chunk.step && !updatedMsg.thinkingSteps.includes(chunk.step)) {
+                    updatedMsg.thinkingSteps.push(chunk.step);
+                }
+                if (chunk.sources) updatedMsg.sources = chunk.sources;
+                return updatedMsg;
+            }));
+        };
 
-            const { text, sources } = await generateResponseStream(newUserMessage.text, location, handleChunk);
-            
-            setMessages(prev => prev.map(msg => 
-                msg.id === modelMessageId 
-                ? { ...msg, text, sources, isThinking: false, thinkingSteps: [...(msg.thinkingSteps || []), 'Finalizing response...'] } 
-                : msg
-            ));
-
-        } else {
-             const isFirstQuery = messages.filter(m => m.role === Role.USER).length <= 1;
-             const mode = isFirstQuery ? 'grounded' : 'standard';
-             const { text, sources } = await generateResponse(newUserMessage.text, mode, location);
-             const newModelMessage: Message = { id: (Date.now() + 1).toString(), text, role: Role.MODEL, sources };
-             setMessages(prev => [...prev, newModelMessage]);
-        }
+        const { text, sources } = await generateResponseStream(newUserMessage.text, location, handleChunk);
+        
+        setMessages(prev => prev.map(msg => 
+            msg.id === modelMessageId 
+            ? { ...msg, text, sources, isThinking: false, thinkingSteps: [...(msg.thinkingSteps || []), 'Formatting the response...'] } 
+            : msg
+        ));
         
         setIsLoading(false);
     };
@@ -228,17 +218,6 @@ const Chat: React.FC = () => {
                 {messages.map(msg => (
                     <MessageBubble key={msg.id} message={msg} onAudioRequest={handleAudioRequest} />
                 ))}
-                {isLoading && !isThinkingMode && (
-                    <div className="flex justify-start">
-                        <div className="bg-gray-700 rounded-lg p-3 max-w-lg">
-                            <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse delay-75"></div>
-                                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse delay-150"></div>
-                            </div>
-                        </div>
-                    </div>
-                )}
                 <div ref={chatEndRef} />
             </div>
             <div className="p-4 bg-gray-800 border-t border-gray-700">
@@ -266,13 +245,6 @@ const Chat: React.FC = () => {
                         placeholder="Ask for food assistance..."
                         className="flex-grow p-3 bg-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 text-white transition-shadow"
                     />
-                    <button 
-                        type="button"
-                        onClick={() => setIsThinkingMode(!isThinkingMode)}
-                        title={isThinkingMode ? "Disable Thinking Mode (Complex queries)" : "Enable Thinking Mode (Complex queries)"}
-                        className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 ${isThinkingMode ? 'bg-purple-600 text-white scale-110' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                        <BrainIcon />
-                    </button>
                     <button type="submit" disabled={!input.trim() || isLoading} className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-emerald-500 text-white rounded-full hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors">
                         <SendIcon />
                     </button>
