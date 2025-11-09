@@ -1,0 +1,8 @@
+{
+  "name": "HungerHelper AI Assistant",
+  "description": "An AI-powered chatbot to help users find nearby food pantries and meal services that are currently open. The assistant uses geolocation and real-time data to provide accurate and timely recommendations.",
+  "requestFramePermissions": [
+    "geolocation",
+    "microphone"
+  ]
+}
